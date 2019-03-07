@@ -1,0 +1,216 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="xlsx.core.min.js"></script>
+    <title>让我看看谁是幸运儿</title>
+</head>
+
+<body>
+    <!-- <meter id="m1" value="0" min="0" max="100"></meter> -->
+    <div class=frame>
+        <div id="name-box"></div>
+        <button id="rollBtn" onClick="stopname()">点 名</button>
+    </div>
+</body>
+
+<script language="javascript" type="text/javascript">
+var studentsDict = {},
+    // testDict = {}, // 用于测试每个学生被抽到几率
+    status = 1,
+    getTimer; // 随机获取学生名循环
+
+var dropPrompt = "请将班级表格\n拖拽到此处",
+    dragenterPrompt = "请释放\n手中的鼠标";
+
+window.onload = function() {
+    var oBox = document.getElementById("name-box"),
+        oRollBtn = document.getElementById("rollBtn");
+
+    document.onkeydown = function(event) {
+        var e = event || window.event || arguments.callee.caller.arguments[0];
+        // 按下任意按钮，停止
+        if (e.key === 's') {
+            oRollBtn.click();
+        }
+    };
+
+    oBox.innerHTML = dropPrompt;
+
+    oBox.ondragenter = function() {
+        oBox.innerHTML = dragenterPrompt;
+    };
+    oBox.ondragover = function() {
+        return false; //进入子集的时候 会触发ondragover 频繁触发不给ondrop机会
+    };
+    oBox.ondragleave = function() {
+        oBox.innerHTML = dropPrompt;
+    };
+    oBox.ondrop = function(ev) {
+        var oFile = ev.dataTransfer.files[0],
+            reader = new FileReader(),
+            aStudents;
+
+        // 读取成功后的处理
+        reader.readAsBinaryString(oFile);
+        reader.onload = function(ev) {
+            // console.log("读取结果：", this.result); //当读取完成之后会回调这个函数，然后此时文件的内容存储到了result中。直接操作即可。
+            var data = ev.target.result,
+                workbook = XLSX.read(data, {
+                    type: 'binary'
+                }),
+                aStudents = []; // 以二进制流方式读取得到整份excel表格对象
+
+            // 表格的表格范围，可用于判断表头是否数量是否正确
+            var fromTo = '';
+
+            // 遍历每张表读取
+            for (var sheet in workbook.Sheets) {
+                if (workbook.Sheets.hasOwnProperty(sheet)) {
+                    fromTo = workbook.Sheets[sheet]['!ref'];
+                    aStudents = aStudents.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]));
+                    break; // 只取第一张表
+                }
+            }
+
+            // 获取学生字典
+            // aStudents = [{"学号":1, "姓名":"爱国"}, {"学号":1, "姓名":"阿花"}, ...]
+            for (var rowx = 0; rowx < aStudents.length; ++rowx) {
+                studentsDict[aStudents[rowx]["学号"]] = aStudents[rowx]["姓名"];
+            }
+
+            goname();
+
+        };
+        return false;
+    };
+};
+
+/**
+ * @Describle [周期性抽取学生]
+ * @Author    Muc
+ * @DateTime  2019-03-05
+ */
+function goname() {
+    getTimer = setInterval(showname, 69);
+}
+
+/**
+ * @Describle [展示被抽到的学生]
+ * @Author    Muc
+ * @DateTime  2019-03-05
+ */
+function showname() {
+    document.getElementById("name-box").innerHTML = getStudent(studentsDict);
+    setTimeout("showname", 69);
+}
+
+/**
+ * @Describle [暂定抽取]
+ * @Author    Muc
+ * @DateTime  2019-03-05
+ */
+function stopname() {
+    // xls文件导入后才能使用“点名”功能
+    if (dictKeysCount(studentsDict)) {
+        if (status == 1) {
+            clearInterval(getTimer);
+            status = 0;
+        } else {
+            goname();
+            status = 1;
+        }
+    }
+
+}
+
+/**
+ * @Describle [从学生字典中，随机获取学生]
+ * @Author    Muc
+ * @DateTime  2019-03-05
+ * @param     {[dict]}    dict   [学生字典]
+ * @return    {[string]}         [eg. 1号 王爱国]
+ */
+function getStudent(Dict) {
+    var maxInx = dictKeysCount(studentsDict),
+        minInx = 1,
+        range = maxInx - minInx,
+        rand = Math.random(),
+        random_inx = minInx + Math.round(rand * range),
+        output = random_inx + "号" + '\n' + Dict[random_inx];
+
+    // Muc 2019-03-05 测试学生被抽中的概率
+    // if (testDict[random_inx] === undefined) {
+    //     testDict[random_inx] = 1;
+    // } else {
+    //     testDict[random_inx] += 1;
+    // }
+
+    return output;
+}
+
+/**
+ * @Describle [字典键数计算]
+ * @Author    Muc
+ * @DateTime  2019-03-05
+ * @param     {[dict]}    dict   [学生字典]
+ * @return    {[string]}         [eg. 1号 王爱国]
+ */
+function dictKeysCount(dict) {
+    var dictLength = 0;
+    for (var item in dict) {
+        ++dictLength;
+    }
+    return dictLength;
+}
+
+</script>
+
+<style>
+body {
+    background: black;
+    color: white;
+}
+
+.frame {
+    text-align: center;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: block;
+}
+
+#name-box {
+    height: 100%;
+    width: 100%;
+    font-size: 100px;
+    text-align: center;
+    vertical-align: center;
+    white-space: pre;
+}
+
+#rollBtn {
+    width: 300px;
+    height: 80px;
+    background: #e7e7e7;
+    /*font-weight: bold;*/
+    font-size: 30px;
+    border-radius: 1.2em;
+    outline-style: none;
+    cursor: pointer;
+    transition-duration: 0.2s;
+}
+
+#rollBtn:hover {
+    background: gray;
+}
+
+#rollBtn:active {
+    transform: translateY(8px);
+}
+
+</style>
+
+</html>
