@@ -20,7 +20,6 @@
 
 <script language="javascript" type="text/javascript">
 var studentsDict = {},
-    // testDict = {}, // 用于测试每个学生被抽到几率
     status = 1,
     getTimer; // 随机获取学生名循环
 
@@ -136,19 +135,18 @@ function stopname() {
  * @return    {[string]}         [eg. 1号 王爱国]
  */
 function getStudent(Dict) {
-    var maxInx = dictKeysCount(studentsDict),
-        minInx = 1,
-        range = maxInx - minInx,
-        rand = Math.random(),
-        random_inx = minInx + Math.round(rand * range),
+    var maxNum = dictKeysCount(studentsDict),
+        minNum = 1,
+        random_inx = parseInt(Math.random() * (maxNum - minNum+1) + minNum, 10),
         output = random_inx + "号" + '\n' + Dict[random_inx];
 
     // Muc 2019-03-05 测试学生被抽中的概率
-    // if (testDict[random_inx] === undefined) {
-    //     testDict[random_inx] = 1;
-    // } else {
-    //     testDict[random_inx] += 1;
-    // }
+    if (testDict[random_inx] === undefined) {
+        testDict[random_inx] = 1;
+    } else {
+        testDict[random_inx] += 1;
+    }
+
 
     return output;
 }
