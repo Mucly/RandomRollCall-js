@@ -12,7 +12,16 @@ body {
     display: block;
 }
 
-#name-box {
+#content-box {
+    height: 100%;
+    width: 100%;
+    font-size: 100px;
+    text-align: center;
+    vertical-align: center;
+    white-space: pre;
+}
+
+#group-hide-box {
     height: 100%;
     width: 100%;
     font-size: 100px;

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>随机点名平台</title>
+    <title>抽奖平台 Made By Muc</title>
     <link rel="icon" href="./img/title.bmp">
     </link>
     <link rel="stylesheet" type="text/css" href="./css/rollCall.css">
@@ -11,10 +11,11 @@
 </head>
 
 <body>
-    <!-- <meter id="m1" value="0" min="0" max="100"></meter> -->
+    <!-- <meter id="m1" value="0" min="0" max="80"></meter> -->
     <div class=frame>
-        <div id="name-box"></div>
-        <button id="rollBtn" onClick="stopname()">点 名</button>
+        <div id="content-box"></div>
+        <div id="group-hide-box"></div>
+        <button id="rollBtn" onClick="stopFlash()">开 始</button>
     </div>
 </body>
 
@@ -23,11 +24,17 @@ var studentsDict = {},
     status = 1,
     getTimer; // 随机获取学生名循环
 
-var dropPrompt = "请将班级表格\n拖拽到此处",
+var g_aStudents = []; // 以二进制流方式读取得到整份excel表格对象
+
+var dropPrompt = "请将Excel表格\n拖拽到此处",
     dragenterPrompt = "请释放\n手中的鼠标";
 
+
 window.onload = function() {
-    var oBox = document.getElementById("name-box"),
+    // 隐藏分组元素
+    document.getElementById("group-hide-box").style.display="none";
+
+    var oBox = document.getElementById("content-box"),
         oRollBtn = document.getElementById("rollBtn");
 
     document.onkeydown = function(event) {
@@ -46,13 +53,12 @@ window.onload = function() {
     oBox.ondragover = function() {
         return false; //进入子集的时候 会触发ondragover 频繁触发不给ondrop机会
     };
-    oBox.ondragleave = function() {
-        oBox.innerHTML = dropPrompt;
-    };
+    // oBox.ondragleave = function() {
+    //     oBox.innerHTML = dropPrompt;
+    // };
     oBox.ondrop = function(ev) {
         var oFile = ev.dataTransfer.files[0],
-            reader = new FileReader(),
-            aStudents;
+            reader = new FileReader();
 
         // 读取成功后的处理
         reader.readAsBinaryString(oFile);
@@ -61,8 +67,7 @@ window.onload = function() {
             var data = ev.target.result,
                 workbook = XLSX.read(data, {
                     type: 'binary'
-                }),
-                aStudents = []; // 以二进制流方式读取得到整份excel表格对象
+                });
 
             // 表格的表格范围，可用于判断表头是否数量是否正确
             var fromTo = '';
@@ -71,15 +76,9 @@ window.onload = function() {
             for (var sheet in workbook.Sheets) {
                 if (workbook.Sheets.hasOwnProperty(sheet)) {
                     fromTo = workbook.Sheets[sheet]['!ref'];
-                    aStudents = aStudents.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]));
+                    g_aStudents = g_aStudents.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]));
                     break; // 只取第一张表
                 }
-            }
-
-            // 获取学生字典
-            // aStudents = [{"学号":1, "姓名":"爱国"}, {"学号":1, "姓名":"阿花"}, ...]
-            for (var rowx = 0; rowx < aStudents.length; ++rowx) {
-                studentsDict[aStudents[rowx]["学号"]] = aStudents[rowx]["姓名"];
             }
 
             goname();
@@ -95,7 +94,7 @@ window.onload = function() {
  * @DateTime  2019-03-05
  */
 function goname() {
-    getTimer = setInterval(showname, 69);
+    getTimer = setInterval(startFlash, 80);
 }
 
 /**
@@ -103,9 +102,12 @@ function goname() {
  * @Author    Muc
  * @DateTime  2019-03-05
  */
-function showname() {
-    document.getElementById("name-box").innerHTML = getStudent(studentsDict);
-    setTimeout("showname", 69);
+function startFlash() {
+    var aTmp = getStudent();
+    document.getElementById("content-box").innerHTML = aTmp[0] + '\n'  +aTmp[1];
+    document.getElementById("group-hide-box").innerHTML = aTmp[2];
+
+    setTimeout("startFlash", 80);
 }
 
 /**
@@ -113,43 +115,62 @@ function showname() {
  * @Author    Muc
  * @DateTime  2019-03-05
  */
-function stopname() {
+function stopFlash() {
     // xls文件导入后才能使用“点名”功能
-    if (dictKeysCount(studentsDict)) {
+    if (g_aStudents.length) {
         if (status == 1) {
             clearInterval(getTimer);
             status = 0;
+            // console.log("1")
+            signForFilterClass();
         } else {
             goname();
             status = 1;
+            // console.log("2")
+        }
+
+    }
+
+}
+
+/**
+ * @Describle [标记已抽过的班级，将数据进行过滤]
+ * @Author    Muc
+ * @DateTime  2019-03-05
+ * @return    {[序号:1, 内容:XXX, 备注:XXX], ...}
+ */
+function signForFilterClass() {
+    // xls文件导入后才能使用“点名”功能
+    var group_name = document.getElementById("group-hide-box").innerHTML;
+    var aTmp = [], inxTmp = 0;
+
+    // 遍历g_aStudents，过滤掉同分组的数据
+    for (var inx=0, len=g_aStudents.length; inx<len; inx++) {
+        if (g_aStudents[inx]['分组'] != group_name) {
+            aTmp[inxTmp] = g_aStudents[inx];
+            ++inxTmp;
         }
     }
 
+    g_aStudents = aTmp;
 }
 
 /**
  * @Describle [从学生字典中，随机获取学生]
  * @Author    Muc
  * @DateTime  2019-03-05
- * @param     {[dict]}    dict   [学生字典]
- * @return    {[string]}         [eg. 1号 王爱国]
+ * @return    {[序号:1, 内容:XXX, 备注:XXX], ...}
  */
-function getStudent(Dict) {
-    var maxNum = dictKeysCount(studentsDict),
-        minNum = 1,
-        random_inx = parseInt(Math.random() * (maxNum - minNum+1) + minNum, 10),
-        output = random_inx + "号" + '\n' + Dict[random_inx];
+function getStudent() {
+    var maxNum = g_aStudents.length - 1,
+        minNum = 0,
+        random_inx = Math.floor(Math.random() * (maxNum - minNum+1) + minNum);
 
-    // Muc 2019-03-05 测试学生被抽中的概率
-    // if (testDict[random_inx] === undefined) {
-    //     testDict[random_inx] = 1;
-    // } else {
-    //     testDict[random_inx] += 1;
-    // }
-    // console.log(testDict)
+    var content = g_aStudents[random_inx]["内容"],
+        notes = g_aStudents[random_inx]["备注"]?g_aStudents[random_inx]["备注"]:"",
+        group =  g_aStudents[random_inx]["分组"];
 
-
-    return output;
+    return new Array(content, notes, group);
 }
 
 /**
